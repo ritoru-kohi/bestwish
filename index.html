@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Рандомное пожелание</title>
+    <style>
+        /* ----- Сброс и база ----- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, 'Helvetica Neue', 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+            background: #000000;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            transition: background 0.2s ease;
+        }
+
+        .container {
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .ios-button {
+            background-color: #0a84ff;
+            border: none;
+            border-radius: 14px;
+            padding: 14px 28px;
+            font-size: 17px;
+            font-weight: 590;
+            color: white;
+            letter-spacing: -0.2px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 280px;
+            margin: 0 auto;
+            display: inline-block;
+        }
+
+        .ios-button:active {
+            background-color: #0066d4;
+            transform: scale(0.97);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0.2s, opacity 0.2s ease;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .ios-alert {
+            background-color: #1c1c1e;
+            width: 290px;
+            max-width: 90vw;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 20px 35px -12px #00000080, 0 0 0 0.5px #ffffff14;
+            animation: fadeInScale 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            text-align: center;
+        }
+
+        .alert-content {
+            background: #1c1c1e;
+            padding: 24px 20px 20px 20px;
+            border-radius: 14px 14px 0 0;
+        }
+
+        .message-group {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-bottom: 8px;
+        }
+
+        .wish-line {
+            font-size: 17px;
+            line-height: 1.45;
+            font-weight: 420;
+            color: #ffffff;
+            letter-spacing: -0.2px;
+        }
+
+        .deco-line {
+            font-size: 26px;
+            font-weight: 350;
+            color: #8e8e93;
+            margin-top: 8px;
+            letter-spacing: 2px;
+            font-family: 'Courier New', 'SF Mono', monospace;
+            opacity: 0.8;
+        }
+
+        .alert-action {
+            background-color: #1c1c1e;
+            border-top: 0.5px solid #38383a;
+            padding: 12px 0;
+            font-size: 17px;
+            font-weight: 590;
+            color: #0a84ff;
+            cursor: pointer;
+            transition: background 0.1s;
+            width: 100%;
+            text-align: center;
+        }
+
+        .alert-action:active {
+            background-color: #2c2c2e;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.94);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .caption {
+            margin-top: 32px;
+            font-size: 13px;
+            color: #8e8e93;
+            text-align: center;
+            font-weight: 400;
+        }
+        
+        .random-badge {
+            display: inline-block;
+            background: #1c1c1e;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 12px;
+            color: #0a84ff;
+            font-weight: 500;
+            letter-spacing: -0.2px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <button class="ios-button" id="showWishBtn">Случайное пожелание</button>
+    <div class="caption">
+        Каждый раз новая вдохновляющая фраза<br>
+        <span class="random-badge">режим рандома</span>
+    </div>
+</div>
+
+<div class="modal-overlay" id="wishModal">
+    <div class="ios-alert">
+        <div class="alert-content" id="dynamicAlertContent">
+            <div class="message-group">
+                <div class="wish-line">Cargando...</div>
+            </div>
+            <div class="deco-line">= ( - - ) =</div>
+        </div>
+        <div class="alert-action" id="closeModalBtn">Спасибо</div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // БАНК ВДОХНОВЛЯЮЩИХ ФРАЗ (на трёх языках + рандомный набор)
+        // Каждый объект содержит три поля: испанский, русский, английский
+        const wishesCollection = [
+            {
+                es: "Puedes afrontar cualquier dificultad.",
+                ru: "Ты справишься с любыми трудностями.",
+                en: "You can handle any difficulties."
+            },
+            {
+                es: "Cada día es una nueva oportunidad.",
+                ru: "Каждый день — это новая возможность.",
+                en: "Every day is a fresh opportunity."
+            },
+            {
+                es: "Confía en tu fuerza interior.",
+                ru: "Верь в свою внутреннюю силу.",
+                en: "Trust your inner strength."
+            },
+            {
+                es: "Pequeños pasos, grandes logros.",
+                ru: "Маленькие шаги — большие достижения.",
+                en: "Small steps, big achievements."
+            },
+            {
+                es: "La perseverancia abre puertas.",
+                ru: "Настойчивость открывает двери.",
+                en: "Perseverance opens doors."
+            },
+            {
+                es: "Hoy es un buen día para brillar.",
+                ru: "Сегодня отличный день, чтобы сиять.",
+                en: "Today is a great day to shine."
+            },
+            {
+                es: "Eres más fuerte de lo que crees.",
+                ru: "Ты сильнее, чем думаешь.",
+                en: "You are stronger than you think."
+            },
+            {
+                es: "Acepta el reto y crece.",
+                ru: "Прими вызов и расти.",
+                en: "Embrace the challenge and grow."
+            }
+        ];
+
+        // Дополнительные декоративные символы
+        const decoVariants = [
+            "= ( - - ) =",
+            "★ ( •_• ) ★",
+            "~ ( ^ _ ^ ) ~",
+            "♡ ( ˘ ³˘ ) ♡",
+            "✦ ( ◡‿◡ ) ✦",
+            "= ( ^ ^ ) ="
+        ];
+        
+        function getRandomItem(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+        
+        const modal = document.getElementById('wishModal');
+        const showBtn = document.getElementById('showWishBtn');
+        const closeBtn = document.getElementById('closeModalBtn');
+        const dynamicContent = document.getElementById('dynamicAlertContent');
+        
+        function updateModalWithRandomWish() {
+            const randomWish = getRandomItem(wishesCollection);
+            
+            let selectedDeco;
+            if (Math.random() < 0.6) {
+                selectedDeco = "= ( - - ) =";
+            } else {
+                selectedDeco = getRandomItem(decoVariants);
+            }
+            
+
+            const newHtml = `
+                <div class="message-group" style="animation: fadeInScale 0.15s ease;">
+                    <div class="wish-line">${randomWish.es}</div>
+                    <div class="wish-line">${randomWish.ru}</div>
+                    <div class="wish-line">${randomWish.en}</div>
+                </div>
+                <div class="deco-line" style="animation: fadeInScale 0.2s ease;">${selectedDeco}</div>
+            `;
+            
+            dynamicContent.innerHTML = newHtml;
+        }
+        
+        function openModalWithRandom() {
+            updateModalWithRandomWish();
+            modal.classList.add('active');
+            if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate(10);
+            }
+        }
+        
+        function closeModal() {
+            modal.classList.remove('active');
+        }
+        
+        showBtn.addEventListener('click', openModalWithRandom);
+        closeBtn.addEventListener('click', closeModal);
+        
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                closeModal();
+            }
+        });
+        
+        (function initDefault() {
+            const firstWish = wishesCollection[0];
+            dynamicContent.innerHTML = `
+                <div class="message-group">
+                    <div class="wish-line">${firstWish.es}</div>
+                    <div class="wish-line">${firstWish.ru}</div>
+                    <div class="wish-line">${firstWish.en}</div>
+                </div>
+                <div class="deco-line">= ( - - ) =</div>
+            `;
+        })();
+    })();
+</script>
+
+</body>
+</html>
